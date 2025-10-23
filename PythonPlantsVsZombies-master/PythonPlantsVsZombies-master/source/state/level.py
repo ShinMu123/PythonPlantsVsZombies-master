@@ -6,10 +6,12 @@ import pygame as pg
 from .. import tool
 from .. import constants as c
 from ..component import map, plant, zombie, menubar
+from ..auth.global_auth import user_manager
 
 class Level(tool.State):
     def __init__(self):
         tool.State.__init__(self)
+        self.current_score = 0
     
     def startup(self, current_time, persist):
         self.game_info = persist
@@ -70,7 +72,7 @@ class Level(tool.State):
             _, y = self.map.getMapGridPos(0, i)
             self.cars.append(plant.Car(-25, y+20, i))
 
-    def update(self, surface, current_time, mouse_pos, mouse_click):
+    def update(self, surface, keys, current_time, mouse_pos, mouse_click, events=None):
         self.current_time = self.game_info[c.CURRENT_TIME] = current_time
         if self.state == c.CHOOSE:
             self.choose(mouse_pos, mouse_click)
@@ -510,11 +512,28 @@ class Level(tool.State):
     def checkGameState(self):
         if self.checkVictory():
             self.game_info[c.LEVEL_NUM] += 1
+            # Lưu điểm số khi thắng
+            self.saveScore(True)
             self.next = c.GAME_VICTORY
             self.done = True
         elif self.checkLose():
+            # Lưu điểm số khi thua
+            self.saveScore(False)
             self.next = c.GAME_LOSE
             self.done = True
+    
+    def saveScore(self, won):
+        """Lưu điểm số của người chơi"""
+        # Tính điểm dựa trên level và thời gian sống sót
+        level = self.game_info[c.LEVEL_NUM]
+        score = level * 1000  # Điểm cơ bản cho mỗi level
+        
+        # Thêm điểm bonus nếu thắng
+        if won:
+            score += 500
+        
+        # Cập nhật điểm số trong user manager
+        user_manager.update_score(score, level, won)
 
     def drawMouseShow(self, surface):
         if self.hint_plant:

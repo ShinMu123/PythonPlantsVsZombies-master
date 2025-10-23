@@ -23,7 +23,7 @@ class State():
         return self.persist
     
     @abstractmethod
-    def update(self, surface, keys, current_time):
+    def update(self, surface, keys, current_time, mouse_pos, mouse_click, events=None):
         '''abstract method'''
 
 class Control():
@@ -48,11 +48,11 @@ class Control():
         self.state = self.state_dict[self.state_name]
         self.state.startup(self.current_time, self.game_info)
 
-    def update(self):
+    def update(self, events):
         self.current_time = pg.time.get_ticks()
         if self.state.done:
             self.flip_state()
-        self.state.update(self.screen, self.current_time, self.mouse_pos, self.mouse_click)
+        self.state.update(self.screen, self.keys, self.current_time, self.mouse_pos, self.mouse_click, events)
         self.mouse_pos = None
         self.mouse_click[0] = False
         self.mouse_click[1] = False
@@ -63,8 +63,8 @@ class Control():
         self.state = self.state_dict[self.state_name]
         self.state.startup(self.current_time, persist)
 
-    def event_loop(self):
-        for event in pg.event.get():
+    def event_loop(self, events):
+        for event in events:
             if event.type == pg.QUIT:
                 self.done = True
             elif event.type == pg.KEYDOWN:
@@ -78,8 +78,9 @@ class Control():
 
     def main(self):
         while not self.done:
-            self.event_loop()
-            self.update()
+            events = pg.event.get()
+            self.event_loop(events)
+            self.update(events)
             pg.display.update()
             self.clock.tick(self.fps)
         print('game over')

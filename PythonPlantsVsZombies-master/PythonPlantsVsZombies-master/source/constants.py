@@ -25,6 +25,8 @@ RED          = (255,   0,   0)
 PURPLE       = (255,   0, 255)
 GOLD         = (255, 215,   0)
 GREEN        = (  0, 255,   0)
+SILVER       = (192, 192, 192)
+BRONZE       = (205, 127,  50)
 
 SIZE_MULTIPLIER = 1.3
 
@@ -39,6 +41,8 @@ LOAD_SCREEN = 'load screen' # màn hình tải (nếu có)
 GAME_LOSE = 'game los'     # màn thua
 GAME_VICTORY = 'game victory' # màn chiến thắng
 LEVEL = 'level'            # trạng thái chơi level
+AUTH_SCREEN = 'auth screen' # màn hình đăng nhập/đăng ký
+LEADERBOARD_SCREEN = 'leaderboard screen' # màn hình bảng xếp hạng
 
 MAIN_MENU_IMAGE = 'MainMenu'
 OPTION_ADVENTURE = 'Adventure'

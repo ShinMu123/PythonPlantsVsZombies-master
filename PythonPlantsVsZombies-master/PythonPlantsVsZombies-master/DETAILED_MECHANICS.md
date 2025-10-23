@@ -470,4 +470,3 @@ python main.py
 run_ppvz_local.bat
 ```
 
-Code này được thiết kế rất tốt với kiến trúc modular, dễ hiểu và mở rộng!

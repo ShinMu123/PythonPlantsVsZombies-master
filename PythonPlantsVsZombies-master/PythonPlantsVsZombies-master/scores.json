@@ -1,0 +1,30 @@
+{
+  "admin": {
+    "high_score": 10000,
+    "total_games": 10,
+    "wins": 8,
+    "losses": 2,
+    "best_level": 5
+  },
+  "test": {
+    "high_score": 5000,
+    "total_games": 5,
+    "wins": 3,
+    "losses": 2,
+    "best_level": 3
+  },
+  "vinh": {
+    "high_score": 0,
+    "total_games": 0,
+    "wins": 0,
+    "losses": 0,
+    "best_level": 1
+  },
+  "test_user_6406": {
+    "high_score": 2500,
+    "total_games": 1,
+    "wins": 1,
+    "losses": 0,
+    "best_level": 3
+  }
+}

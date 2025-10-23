@@ -1,0 +1,26 @@
+{
+  "admin": {
+    "password": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+    "email": "admin@game.com",
+    "created_at": "2024-01-01T00:00:00",
+    "last_login": null
+  },
+  "test": {
+    "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+    "email": "test@game.com",
+    "created_at": "2024-01-01T00:00:00",
+    "last_login": null
+  },
+  "vinh": {
+    "password": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+    "email": "",
+    "created_at": "2025-10-24T02:20:19.571090",
+    "last_login": "2025-10-24T02:47:48.204755"
+  },
+  "test_user_6406": {
+    "password": "7e6e0c3079a08c5cc6036789b57e951f65f82383913ba1a49ae992544f1b4b6e",
+    "email": "test@example.com",
+    "created_at": "2025-10-24T02:45:13.149174",
+    "last_login": "2025-10-24T02:45:13.169598"
+  }
+}
