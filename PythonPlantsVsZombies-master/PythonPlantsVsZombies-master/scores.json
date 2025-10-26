@@ -26,5 +26,19 @@
     "wins": 1,
     "losses": 0,
     "best_level": 3
+  },
+  "dho": {
+    "high_score": 2500,
+    "total_games": 2,
+    "wins": 2,
+    "losses": 0,
+    "best_level": 2
+  },
+  "htran": {
+    "high_score": 6500,
+    "total_games": 5,
+    "wins": 5,
+    "losses": 0,
+    "best_level": 6
   }
 }

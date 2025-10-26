@@ -1,3 +1,4 @@
+TIME_SCALE=2.0
 __author__ = 'marble_xu'
 
 from . import tool
