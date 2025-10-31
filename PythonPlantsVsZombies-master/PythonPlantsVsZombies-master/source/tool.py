@@ -3,6 +3,7 @@
 import pygame as pg
 from . import constants as c
 import os
+from collections import defaultdict
 
 # ===============================
 # Base class cho tất cả các màn game
@@ -117,6 +118,11 @@ class Control:
 GFX = {}
 SCREEN = None
 
+# Một số rect cắt ảnh theo tên (tùy chọn). Hiện để trống để tránh lỗi thuộc tính.
+PLANT_RECT = {}
+# Mặc định x = 0 cho zombie frames nếu không chỉ định
+ZOMBIE_RECT = defaultdict(lambda: {'x': 0})
+
 def load_gfx(folder, colorkey=(255,0,255), accept=(".png",".jpg",".bmp")):
     """
     Load ảnh từ thư mục đồ họa. Hỗ trợ:
@@ -192,6 +198,46 @@ def load_gfx(folder, colorkey=(255,0,255), accept=(".png",".jpg",".bmp")):
             index += 1
         if backgrounds:
             GFX[c.BACKGROUND_NAME] = backgrounds
+
+    # Nạp các thư mục có hoạt ảnh nhiều frame: Plants, Zombies, Bullets
+    def load_sequence_dir(target_dir):
+        files = [f for f in os.listdir(target_dir)
+                 if os.path.isfile(os.path.join(target_dir, f)) and os.path.splitext(f)[1].lower() in accept]
+        if not files:
+            return []
+        def sort_key(name):
+            base, _ = os.path.splitext(name)
+            # Ưu tiên số ở cuối tên file, ví dụ SunFlower_12 -> 12
+            parts = base.rsplit('_', 1)
+            if len(parts) == 2 and parts[1].isdigit():
+                return int(parts[1])
+            return base
+        files.sort(key=sort_key)
+        frames = []
+        for pic in files:
+            path = os.path.join(target_dir, pic)
+            try:
+                img = pg.image.load(path).convert_alpha()
+            except Exception:
+                img = pg.image.load(path).convert()
+            if colorkey is not None:
+                img.set_colorkey(colorkey)
+            frames.append(img)
+        return frames
+
+    def load_recursive_sequences(base_name):
+        base_dir = os.path.join(folder, base_name)
+        if not os.path.isdir(base_dir):
+            return
+        for root, dirs, _ in os.walk(base_dir):
+            # Nếu root chứa trực tiếp các frame, dùng tên thư mục làm key
+            frames = load_sequence_dir(root)
+            if frames:
+                key = os.path.basename(root)
+                GFX[key] = frames
+
+    for name in ['Plants', 'Zombies', 'Bullets']:
+        load_recursive_sequences(name)
 
 def get_image(sheet, x, y, width, height, colorkey=None, scale=1.0):
     """

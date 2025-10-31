@@ -1,13 +1,13 @@
-import sys
-import os
-
-# Thêm đường dẫn thư mục source vào sys.path
-project_path = os.path.join(os.path.dirname(__file__), 'PythonPlantsVsZombies-master', 'PythonPlantsVsZombies-master')
-sys.path.insert(0, project_path)
-
 import pygame as pg
-from source.main import main
+from source import main as game_main
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    pg.init()
+    screen = pg.display.set_mode((800, 600))
+    pg.display.set_caption("Plants vs Zombies")
+
+    game = game_main.Control()  # tạo Control
+    game.screen = screen  # gán màn hình
+    game.font = pg.font.SysFont("consolas", 20, bold=True)
+    game.main()
     pg.quit()
