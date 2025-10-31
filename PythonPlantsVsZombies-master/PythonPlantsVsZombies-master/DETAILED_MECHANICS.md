@@ -462,7 +462,8 @@ pip install pygame
 
 2. **Chạy game:**
 ```bash
-python main.py
+python run_game.py
+
 ```
 
 3. **Hoặc dùng batch file:**

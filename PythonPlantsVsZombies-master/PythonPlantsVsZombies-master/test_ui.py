@@ -53,7 +53,10 @@ def test_pygame_init():
         print("✅ Pygame khởi tạo thành công!")
         
         # Test font
-        font = pg.font.Font(None, 36)
+        try:
+            font = pg.font.Font(None, 36)
+        except:
+            font = pg.font.SysFont('arial', 36)
         text = font.render("Test Text", True, (255, 255, 255))
         print("✅ Font hoạt động tốt!")
         

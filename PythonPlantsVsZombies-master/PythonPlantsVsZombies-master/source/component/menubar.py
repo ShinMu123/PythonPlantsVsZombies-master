@@ -27,7 +27,10 @@ plant_frozen_time_list = [7500, 7500, 7500, 30000, 50000, 7500, 7500, 7500, 7500
 all_card_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 
 def getSunValueImage(sun_value):
-    font = pg.font.SysFont(None, 22)
+    try:
+        font = pg.font.Font(None, 22)
+    except:
+        font = pg.font.SysFont(None, 22)
     width = 32
     msg_image = font.render(str(sun_value), True, c.NAVYBLUE, c.LIGHTYELLOW)
     msg_rect = msg_image.get_rect()

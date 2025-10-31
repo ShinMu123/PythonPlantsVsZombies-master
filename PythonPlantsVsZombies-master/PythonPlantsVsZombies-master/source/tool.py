@@ -1,47 +1,52 @@
-__author__ = 'marble_xu'
+# tool.py
 
-import os
-import json
-from abc import abstractmethod
 import pygame as pg
 from . import constants as c
+import os
 
-class State():
+# ===============================
+# Base class cho tất cả các màn game
+# ===============================
+class State:
     def __init__(self):
-        self.start_time = 0.0
-        self.current_time = 0.0
         self.done = False
         self.next = None
-        self.persist = {}
-    
-    @abstractmethod
-    def startup(self, current_time, persist):
-        '''abstract method'''
+        self.game_info = {}
+
+    def startup(self, current_time, game_info):
+        pass
 
     def cleanup(self):
-        self.done = False
-        return self.persist
-    
-    @abstractmethod
-    def update(self, surface, keys, current_time, mouse_pos, mouse_click, events=None):
-        '''abstract method'''
+        # Trả về game_info để state kế tiếp nhận đầy đủ dữ liệu (LEVEL_NUM, CURRENT_TIME, ...)
+        return getattr(self, 'game_info', {})
 
-class Control():
+    def update(self, screen, keys, current_time, mouse_pos, mouse_click, events):
+        pass
+
+# ===============================
+# Control class để quản lý game loop, state, input
+# ===============================
+class Control:
     def __init__(self):
-        self.screen = pg.display.get_surface()
+        self.screen = None
         self.done = False
         self.clock = pg.time.Clock()
         self.fps = 60
-        self.keys = pg.key.get_pressed()
+        self.keys = None
         self.mouse_pos = None
-        self.mouse_click = [False, False]  # value:[left mouse click, right mouse click]
+        self.mouse_click = [False, False, False]
         self.current_time = 0.0
         self.state_dict = {}
         self.state_name = None
         self.state = None
-        self.game_info = {c.CURRENT_TIME:0.0,
-                          c.LEVEL_NUM:c.START_LEVEL_NUM}
- 
+        self.game_info = {
+            c.CURRENT_TIME: 0.0,
+            c.LEVEL_NUM: c.START_LEVEL_NUM
+        }
+
+        self.font = None
+        self.show_fps = True
+
     def setup_states(self, state_dict, start_state):
         self.state_dict = state_dict
         self.state_name = start_state
@@ -49,13 +54,16 @@ class Control():
         self.state.startup(self.current_time, self.game_info)
 
     def update(self, events):
+        if self.screen:
+            self.keys = pg.key.get_pressed()
+
         self.current_time = pg.time.get_ticks()
         if self.state.done:
             self.flip_state()
         self.state.update(self.screen, self.keys, self.current_time, self.mouse_pos, self.mouse_click, events)
+
         self.mouse_pos = None
-        self.mouse_click[0] = False
-        self.mouse_click[1] = False
+        self.mouse_click = [False, False, False]
 
     def flip_state(self):
         previous, self.state_name = self.state_name, self.state.next
@@ -68,145 +76,138 @@ class Control():
             if event.type == pg.QUIT:
                 self.done = True
             elif event.type == pg.KEYDOWN:
-                self.keys = pg.key.get_pressed()
+                if self.screen:
+                    self.keys = pg.key.get_pressed()
+                if event.key == pg.K_F3:
+                    self.show_fps = not self.show_fps
             elif event.type == pg.KEYUP:
-                self.keys = pg.key.get_pressed()
+                if self.screen:
+                    self.keys = pg.key.get_pressed()
             elif event.type == pg.MOUSEBUTTONDOWN:
-                self.mouse_pos = pg.mouse.get_pos()
-                self.mouse_click[0], _, self.mouse_click[1] = pg.mouse.get_pressed()
-                print('pos:', self.mouse_pos, ' mouse:', self.mouse_click)
+                self.mouse_pos = event.pos
+                self.mouse_click = pg.mouse.get_pressed()
 
     def main(self):
+        if self.screen is None:
+            raise RuntimeError("Control.screen chưa được gán! Gọi pg.display.set_mode() trước.")
+        if self.font is None:
+            self.font = pg.font.SysFont("consolas", 20, bold=True)
+
+        global SCREEN
+        SCREEN = self.screen
+
         while not self.done:
             events = pg.event.get()
             self.event_loop(events)
             self.update(events)
-            pg.display.update()
+
+            if self.show_fps:
+                fps = int(self.clock.get_fps())
+                fps_text = self.font.render(f"FPS: {fps}", True, (255, 255, 0))
+                self.screen.blit(fps_text, (10, 10))
+
+            pg.display.flip()
             self.clock.tick(self.fps)
-        print('game over')
 
-def get_image(sheet, x, y, width, height, colorkey=c.BLACK, scale=1):
-        image = pg.Surface([width, height])
-        rect = image.get_rect()
+        print("game over")
 
-        image.blit(sheet, (0, 0), (x, y, width, height))
-        image.set_colorkey(colorkey)
-        image = pg.transform.scale(image,
-                                   (int(rect.width*scale),
-                                    int(rect.height*scale)))
-        return image
+# ===============================
+# GFX dictionary và hàm tiện ích load ảnh
+# ===============================
+GFX = {}
+SCREEN = None
 
-def load_image_frames(directory, image_name, colorkey, accept):
-    frame_list = []
-    tmp = {}
-    # image_name is "Peashooter", pic name is 'Peashooter_1', get the index 1
-    index_start = len(image_name) + 1 
-    frame_num = 0;
-    for pic in os.listdir(directory):
+def load_gfx(folder, colorkey=(255,0,255), accept=(".png",".jpg",".bmp")):
+    """
+    Load ảnh từ thư mục đồ họa. Hỗ trợ:
+    - Nạp ảnh ở root vào GFX[name]
+    - Tạo danh sách background tại GFX['Background'] từ Items/Background/Background_*.{png|jpg|bmp}
+    """
+    if not os.path.isdir(folder):
+        return
+
+    # Nạp ảnh ở root folder (giữ hành vi cũ)
+    for pic in os.listdir(folder):
+        path = os.path.join(folder, pic)
+        if not os.path.isfile(path):
+            continue
         name, ext = os.path.splitext(pic)
         if ext.lower() in accept:
-            index = int(name[index_start:])
-            img = pg.image.load(os.path.join(directory, pic))
-            if img.get_alpha():
-                img = img.convert_alpha()
-            else:
-                img = img.convert()
+            img = pg.image.load(path).convert_alpha()
+            if colorkey is not None:
                 img.set_colorkey(colorkey)
-            tmp[index]= img
-            frame_num += 1
+            GFX[name] = img
 
-    for i in range(frame_num):
-        frame_list.append(tmp[i])
-    return frame_list
+    # Nạp thư mục Screen: map tên file -> Surface
+    screen_dir = os.path.join(folder, 'Screen')
+    if os.path.isdir(screen_dir):
+        for pic in os.listdir(screen_dir):
+            path = os.path.join(screen_dir, pic)
+            if not os.path.isfile(path):
+                continue
+            name, ext = os.path.splitext(pic)
+            if ext.lower() in accept:
+                try:
+                    img = pg.image.load(path).convert_alpha()
+                except Exception:
+                    img = pg.image.load(path).convert()
+                if colorkey is not None:
+                    img.set_colorkey(colorkey)
+                GFX[name] = img
 
-def load_all_gfx(directory, colorkey=c.WHITE, accept=('.png', '.jpg', '.bmp', '.gif')):
-    graphics = {}
-    for name1 in os.listdir(directory):
-        # subfolders under the folder resources\graphics
-        dir1 = os.path.join(directory, name1)
-        if os.path.isdir(dir1):
-            for name2 in os.listdir(dir1):
-                dir2 = os.path.join(dir1, name2)
-                if os.path.isdir(dir2):
-                # e.g. subfolders under the folder resources\graphics\Zombies
-                    for name3 in os.listdir(dir2):
-                        dir3 = os.path.join(dir2, name3)
-                        # e.g. subfolders or pics under the folder resources\graphics\Zombies\ConeheadZombie
-                        if os.path.isdir(dir3):
-                            # e.g. it's the folder resources\graphics\Zombies\ConeheadZombie\ConeheadZombieAttack
-                            image_name, _ = os.path.splitext(name3)
-                            graphics[image_name] = load_image_frames(dir3, image_name, colorkey, accept)
-                        else:
-                            # e.g. pics under the folder resources\graphics\Plants\Peashooter
-                            image_name, _ = os.path.splitext(name2)
-                            graphics[image_name] = load_image_frames(dir2, image_name, colorkey, accept)
-                            break
-                else:
-                # e.g. pics under the folder resources\graphics\Screen
-                    name, ext = os.path.splitext(name2)
-                    if ext.lower() in accept:
-                        img = pg.image.load(dir2)
-                        if img.get_alpha():
-                            img = img.convert_alpha()
-                        else:
-                            img = img.convert()
-                            img.set_colorkey(colorkey)
-                        graphics[name] = img
-    return graphics
+    # Nạp thư mục Cards: map tên file -> Surface
+    cards_dir = os.path.join(folder, 'Cards')
+    if os.path.isdir(cards_dir):
+        for pic in os.listdir(cards_dir):
+            path = os.path.join(cards_dir, pic)
+            if not os.path.isfile(path):
+                continue
+            name, ext = os.path.splitext(pic)
+            if ext.lower() in accept:
+                try:
+                    img = pg.image.load(path).convert_alpha()
+                except Exception:
+                    img = pg.image.load(path).convert()
+                if colorkey is not None:
+                    img.set_colorkey(colorkey)
+                GFX[name] = img
 
-def loadZombieImageRect():
-    base = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.normpath(os.path.join(base, 'data', 'entity', 'zombie.json'))
-    f = open(file_path, 'r', encoding='utf-8')
-    data = json.load(f)
-    f.close()
-    return data[c.ZOMBIE_IMAGE_RECT]
+    # Nạp background theo danh sách chỉ số
+    bg_dir = os.path.join(folder, 'Items', 'Background')
+    if os.path.isdir(bg_dir):
+        backgrounds = []
+        index = 0
+        while True:
+            # chấp nhận cả .png và .jpg
+            candidates = [
+                os.path.join(bg_dir, f'Background_{index}.png'),
+                os.path.join(bg_dir, f'Background_{index}.jpg'),
+                os.path.join(bg_dir, f'Background_{index}.bmp'),
+            ]
+            existing = next((p for p in candidates if os.path.isfile(p)), None)
+            if not existing:
+                break
+            img = pg.image.load(existing).convert()
+            backgrounds.append(img)
+            index += 1
+        if backgrounds:
+            GFX[c.BACKGROUND_NAME] = backgrounds
 
-def loadPlantImageRect():
-    base = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.normpath(os.path.join(base, 'data', 'entity', 'plant.json'))
-    f = open(file_path, 'r', encoding='utf-8')
-    data = json.load(f)
-    f.close()
-    return data[c.PLANT_IMAGE_RECT]
+def get_image(sheet, x, y, width, height, colorkey=None, scale=1.0):
+    """
+    Cắt một hình từ sheet (Surface hoặc đường dẫn file) và scale nếu cần.
+    """
+    # Cho phép truyền vào đường dẫn file ảnh thay vì Surface
+    if isinstance(sheet, str):
+        loaded = pg.image.load(sheet).convert_alpha()
+    else:
+        loaded = sheet
 
-pg.init()
-# Hiển thị tiêu đề cửa sổ: ưu tiên dùng bản tiếng Việt nếu có
-try:
-    pg.display.set_caption(c.VIET_CAPTION)
-except Exception:
-    pg.display.set_caption(c.ORIGINAL_CAPTION)
-SCREEN = pg.display.set_mode(c.SCREEN_SIZE)
-
-# Try to find the graphics directory in a few likely places so the game
-# can be launched from different working directories (e.g. workspace root).
-def find_graphics_dir():
-    # 1) resources/graphics relative to this source file
-    base = os.path.dirname(os.path.abspath(__file__))
-    candidate = os.path.normpath(os.path.join(base, os.pardir, 'resources', 'graphics'))
-    if os.path.isdir(candidate):
-        return candidate
-    # 2) resources/graphics relative to current working directory
-    candidate = os.path.normpath(os.path.join(os.getcwd(), 'resources', 'graphics'))
-    if os.path.isdir(candidate):
-        return candidate
-    # 3) anh/graphics in workspace root (one level up from project dir and at workspace root)
-    candidate = os.path.normpath(os.path.join(base, os.pardir, os.pardir, 'anh', 'graphics'))
-    if os.path.isdir(candidate):
-        return candidate
-    # 4) anh/graphics relative to cwd
-    candidate = os.path.normpath(os.path.join(os.getcwd(), 'anh', 'graphics'))
-    if os.path.isdir(candidate):
-        return candidate
-    # If nothing found, raise a clear error to help debugging
-    raise FileNotFoundError("Could not find a 'resources/graphics' or 'anh/graphics' directory. Looked in: %s" % \
-                            (', '.join([
-                                os.path.normpath(os.path.join(base, os.pardir, 'resources', 'graphics')),
-                                os.path.normpath(os.path.join(os.getcwd(), 'resources', 'graphics')),
-                                os.path.normpath(os.path.join(base, os.pardir, os.pardir, 'anh', 'graphics')),
-                                os.path.normpath(os.path.join(os.getcwd(), 'anh', 'graphics'))
-                            ])))
-
-GFX = load_all_gfx(find_graphics_dir())
-ZOMBIE_RECT = loadZombieImageRect()
-PLANT_RECT = loadPlantImageRect()
+    image = pg.Surface((width, height), pg.SRCALPHA).convert_alpha()
+    image.blit(loaded, (0, 0), (x, y, width, height))
+    if colorkey is not None:
+        image.set_colorkey(colorkey)
+    if scale != 1.0:
+        size = (int(width * scale), int(height * scale))
+        image = pg.transform.scale(image, size)
+    return image

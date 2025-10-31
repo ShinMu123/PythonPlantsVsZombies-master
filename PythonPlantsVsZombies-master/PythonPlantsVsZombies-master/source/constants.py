@@ -185,3 +185,19 @@ PLAY = 'play'
 #BACKGROUND
 BACKGROUND_DAY = 0
 BACKGROUND_NIGHT = 1
+
+# ===== Đường dẫn tài nguyên (thêm) =====
+import os
+
+# Thư mục project root (từ file này: source/constants.py -> lên 1 cấp)
+BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# Thư mục chứa ảnh
+GRAPHICS_PATH = os.path.join(BASE_PATH, 'resources', 'graphics')
+
+# Map tên ảnh -> đường dẫn file (phục vụ MainMenu)
+GFX = {
+    MAIN_MENU_IMAGE: os.path.join(GRAPHICS_PATH, 'Screen', 'MainMenu.png'),
+    OPTION_ADVENTURE + '_0': os.path.join(GRAPHICS_PATH, 'Screen', 'Adventure_0.png'),
+    OPTION_ADVENTURE + '_1': os.path.join(GRAPHICS_PATH, 'Screen', 'Adventure_1.png'),
+}
