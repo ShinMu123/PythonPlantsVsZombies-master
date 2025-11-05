@@ -44,12 +44,17 @@ class Screen(tool.State):
 class GameVictoryScreen(Screen):
     def __init__(self):
         Screen.__init__(self)
-    
+
     def getImageName(self):
         return c.GAME_VICTORY_IMAGE
-    
+
     def set_next_state(self):
         return c.LEVEL
+
+    def update(self, surface, keys, current_time, mouse_pos, mouse_click, events=None):
+        if mouse_click and mouse_click[0]:  # left click to continue
+            self.done = True
+        super().update(surface, keys, current_time, mouse_pos, mouse_click, events)
 
 class GameLoseScreen(Screen):
     def __init__(self):

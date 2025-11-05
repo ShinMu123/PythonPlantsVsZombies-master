@@ -139,6 +139,8 @@ class MenuBar():
         self.sun_value = sun_value
         self.card_offset_x = 32
         self.setupCards(card_list)
+        # Khởi tạo current_time để tránh lỗi khi checkCardClick được gọi trước update()
+        self.current_time = 0
 
     def loadFrame(self, name):
         frame = tool.GFX[name]
@@ -288,11 +290,18 @@ class Panel():
                 break
 
     def addCard(self, card):
+        # Enforce hard limit of CARD_LIST_NUM selections regardless of call site
+        if self.selected_num >= CARD_LIST_NUM:
+            return
         card.setSelect(False)
         y = 8
         x = 78 + self.selected_num * 55
         self.selected_cards.append(Card(x, y, card.name_index))
         self.selected_num += 1
+        try:
+            print(f"[PANEL] Added card index={card.name_index}, total={self.selected_num}")
+        except Exception:
+            pass
 
     def deleteCard(self, index):
         self.card_list[index].setSelect(True)
@@ -324,6 +333,10 @@ class Panel():
 
         if self.selected_num == CARD_LIST_NUM:
             surface.blit(self.button_image, self.button_rect)
+
+    def update(self, current_time):
+        self.current_time = current_time
+        
 
 class MoveCard():
     def __init__(self, x, y, card_name, plant_name, scale=0.78):

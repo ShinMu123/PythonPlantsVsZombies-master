@@ -123,7 +123,7 @@ PLANT_RECT = {}
 # Mặc định x = 0 cho zombie frames nếu không chỉ định
 ZOMBIE_RECT = defaultdict(lambda: {'x': 0})
 
-def load_gfx(folder, colorkey=(255,0,255), accept=(".png",".jpg",".bmp")):
+def load_gfx(folder, colorkey=(255,0,255), accept=(".png",".jpg",".bmp",".gif")):
     """
     Load ảnh từ thư mục đồ họa. Hỗ trợ:
     - Nạp ảnh ở root vào GFX[name]
@@ -251,7 +251,15 @@ def get_image(sheet, x, y, width, height, colorkey=None, scale=1.0):
 
     image = pg.Surface((width, height), pg.SRCALPHA).convert_alpha()
     image.blit(loaded, (0, 0), (x, y, width, height))
-    if colorkey is not None:
+    # Nếu colorkey None, tự động lấy màu góc trái trên làm màu nền để trong suốt.
+    # Cách này xử lý các sprite có nền trắng/ tím không đúng chính xác 255.
+    if colorkey is None:
+        try:
+            auto_key = image.get_at((0, 0))
+            image.set_colorkey(auto_key)
+        except Exception:
+            pass
+    else:
         image.set_colorkey(colorkey)
     if scale != 1.0:
         size = (int(width * scale), int(height * scale))

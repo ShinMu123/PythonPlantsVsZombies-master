@@ -1,7 +1,12 @@
 {
-    "background_type":0,
-    "init_sun_value":500,
-    "zombie_list":[
-        {"time":1000, "map_y":2, "name":"Zombie"}
+    "background_type": 0,
+    "init_sun_value": 500,
+    "zombie_list": [
+        {"time": 5000,  "map_y": 20, "name": "Zombie"},
+        {"time": 10000, "map_y": 100, "name": "Zombie"},
+        {"time": 15000, "map_y": 180, "name": "Zombie"},
+        {"time": 20000, "map_y": 260, "name": "Zombie"},
+        {"time": 25000, "map_y": 340, "name": "Zombie"},
+        {"time": 30000, "map_y": 420, "name": "ConeheadZombie"}
     ]
 }

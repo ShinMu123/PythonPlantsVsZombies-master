@@ -14,9 +14,18 @@ class Level(tool.State):
         self.current_score = 0
     
     def startup(self, current_time, persist):
+        # Reset state flags when re-entering this state
+        self.done = False
+        self.next = None
         self.game_info = persist
         self.persist = self.game_info
         self.game_info[c.CURRENT_TIME] = current_time
+        # Lưu current_time vào instance để các hàm khởi tạo sử dụng
+        self.current_time = current_time
+        try:
+            print(f"[LEVEL.startup] level={self.game_info.get(c.LEVEL_NUM)} time={current_time}")
+        except Exception:
+            pass
         self.map_y_len = c.GRID_Y_LEN
         self.map = map.Map(c.GRID_X_LEN, self.map_y_len)
         
@@ -74,8 +83,17 @@ class Level(tool.State):
 
     def update(self, surface, keys, current_time, mouse_pos, mouse_click, events=None):
         self.current_time = self.game_info[c.CURRENT_TIME] = current_time
+        # Ưu tiên lấy toạ độ click trực tiếp từ event để tránh sai khác môi trường
+        click_pos = None
+        if events:
+            for ev in events:
+                if getattr(ev, 'type', None) == pg.MOUSEBUTTONDOWN:
+                    click_pos = getattr(ev, 'pos', None)
+                    break
+        if click_pos is None:
+            click_pos = mouse_pos
         if self.state == c.CHOOSE:
-            self.choose(mouse_pos, mouse_click)
+            self.choose(click_pos, mouse_click)
         elif self.state == c.PLAY:
             self.play(mouse_pos, mouse_click)
 
@@ -93,23 +111,81 @@ class Level(tool.State):
         else:
             self.bar_type = c.CHOOSEBAR_STATIC
 
+        # Thanh chọn tĩnh: vào màn chọn thẻ
         if self.bar_type == c.CHOOSEBAR_STATIC:
             self.initChoose()
         else:
+            # Thanh trượt: vào chơi ngay với pool thẻ được cấu hình
             card_pool = menubar.getCardPool(self.map_data[c.CARD_POOL])
             self.initPlay(card_pool)
-            if self.bar_type == c.CHOSSEBAR_BOWLING:
+            # Bowling: mở ô sẵn trên map
+            if self.bar_type == c.CHOSEBAR_BOWLING:
                 self.initBowlingMap()
+            
+
+            
 
     def initChoose(self):
         self.state = c.CHOOSE
         self.panel = menubar.Panel(menubar.all_card_list, self.map_data[c.INIT_SUN_NAME])
+        # Reset bộ đếm thời gian màn chọn
+        self.choose_start_time = self.current_time
+        self._auto_chosen = False
+        try:
+            print("[LEVEL] Enter CHOOSE state")
+        except Exception:
+            pass
 
     def choose(self, mouse_pos, mouse_click):
-        if mouse_pos and mouse_click[0]:
+        # Xử lý click theo sự kiện MOUSEBUTTONDOWN (dựa vào mouse_pos)
+        if mouse_pos:
+            before = self.panel.selected_num
             self.panel.checkCardClick(mouse_pos)
+            # Fallback: tự dò thủ công nếu vì lý do nào đó Panel không bắt được click
+            if self.panel.selected_num == before:
+                for card in self.panel.card_list:
+                    if card.checkMouseClick(mouse_pos) and card.canSelect():
+                        self.panel.addCard(card)
+                        break
+            # Fallback 2: ánh xạ theo lưới card nếu vẫn chưa bắt được
+            if self.panel.selected_num == before:
+                x, y = mouse_pos
+                # Tính cột/hàng theo lưới hiển thị panel
+                col = (x - menubar.PANEL_X_START) // menubar.PANEL_X_INTERNAL
+                row = (y - (menubar.PANEL_Y_START + 43)) // menubar.PANEL_Y_INTERNAL
+                if 0 <= row < 2 and 0 <= col < 8:
+                    idx = int(row * 8 + col)
+                    if 0 <= idx < len(self.panel.card_list):
+                        card = self.panel.card_list[idx]
+                        if card.canSelect():
+                            self.panel.addCard(card)
+            # Fallback 3: chọn thẻ gần nhất với điểm click
+            if self.panel.selected_num == before:
+                nearest = None
+                nearest_d2 = None
+                cx, cy = mouse_pos
+                for card in self.panel.card_list:
+                    if not card.canSelect():
+                        continue
+                    rx = max(card.rect.x, min(cx, card.rect.right))
+                    ry = max(card.rect.y, min(cy, card.rect.bottom))
+                    dx = rx - cx
+                    dy = ry - cy
+                    d2 = dx*dx + dy*dy
+                    if nearest_d2 is None or d2 < nearest_d2:
+                        nearest_d2 = d2
+                        nearest = card
+                if nearest is not None:
+                    self.panel.addCard(nearest)
             if self.panel.checkStartButtonClick(mouse_pos):
                 self.initPlay(self.panel.getSelectedCards())
+                return
+        # Debug: in ra tổng số thẻ đã chọn để theo dõi
+        try:
+            if hasattr(self, 'panel'):
+                print(f"[CHOOSE] selected={self.panel.selected_num}")
+        except Exception:
+            pass
 
     def initPlay(self, card_list):
         self.state = c.PLAY
@@ -117,6 +193,8 @@ class Level(tool.State):
             self.menubar = menubar.MenuBar(card_list, self.map_data[c.INIT_SUN_NAME])
         else:
             self.menubar = menubar.MoveBar(card_list)
+        # Đảm bảo menubar có current_time ngay khi vào PLAY
+        self.menubar.current_time = self.current_time
         self.drag_plant = False
         self.hint_image = None
         self.hint_plant = False
@@ -139,7 +217,6 @@ class Level(tool.State):
             if  data[0] <= (self.current_time - self.zombie_start_time):
                 self.createZombie(data[1], data[2])
                 self.zombie_list.remove(data)
-
         for i in range(self.map_y_len):
             self.bullet_groups[i].update(self.game_info)
             self.plant_groups[i].update(self.game_info)
@@ -190,6 +267,7 @@ class Level(tool.State):
         self.checkGameState()
 
     def createZombie(self, name, map_y):
+        map_y = max(0, min(map_y, self.map_y_len - 1))
         x, y = self.map.getMapGridPos(0, map_y)
         if name == c.NORMAL_ZOMBIE:
             self.zombie_groups[map_y].add(zombie.NormalZombie(c.ZOMBIE_START_X, y, self.head_group))
@@ -263,7 +341,7 @@ class Level(tool.State):
         else:
             self.menubar.deleateCard(self.select_plant)
 
-        if self.bar_type != c.CHOSSEBAR_BOWLING:
+        if self.bar_type != c.CHOSEBAR_BOWLING:
             self.map.setMapGridType(map_x, map_y, c.MAP_EXIST)
         self.removeMouseImage()
         #print('addPlant map[%d,%d], grid pos[%d, %d] pos[%d, %d]' % (map_x, map_y, x, y, pos[0], pos[1]))
@@ -330,7 +408,7 @@ class Level(tool.State):
                         bullet.setExplode()
     
     def checkZombieCollisions(self):
-        if self.bar_type == c.CHOSSEBAR_BOWLING:
+        if self.bar_type == c.CHOSEBAR_BOWLING:
             ratio = 0.6
         else:
             ratio = 0.7
@@ -393,7 +471,7 @@ class Level(tool.State):
     def killPlant(self, plant):
         x, y = plant.getPosition()
         map_x, map_y = self.map.getMapIndex(x, y)
-        if self.bar_type != c.CHOSSEBAR_BOWLING:
+        if self.bar_type != c.CHOSEBAR_BOWLING:
             self.map.setMapGridType(map_x, map_y, c.MAP_EMPTY)
         if (plant.name == c.CHERRYBOMB or plant.name == c.JALAPENO or
             (plant.name == c.POTATOMINE and not plant.is_init) or
@@ -514,7 +592,7 @@ class Level(tool.State):
             self.game_info[c.LEVEL_NUM] += 1
             # Lưu điểm số khi thắng
             self.saveScore(True)
-            self.next = c.GAME_VICTORY
+            self.next = c.LEVEL
             self.done = True
         elif self.checkLose():
             # Lưu điểm số khi thua

@@ -66,7 +66,9 @@ class Bullet(pg.sprite.Sprite):
             width, height = rect.w, rect.h
         
         for frame in frame_list:
-            frames.append(tool.get_image(frame, x, y, width, height))
+            # Một số đạn (đặc biệt đạn nấm) có nền tím 255,0,255.
+            # Thiết lập colorkey tím để tránh ô vuông tím khi vẽ.
+            frames.append(tool.get_image(frame, x, y, width, height, c.PURPLE))
     
     def load_images(self):
         self.fly_frames = []
@@ -504,7 +506,8 @@ class PotatoMine(Plant):
         name_list = [init_name, idle_name, explode_name]
 
         for i, name in enumerate(name_list):
-            self.loadFrames(frame_list[i], name, 1, c.WHITE)
+            # Để loại bỏ viền trắng khác lệch 255, dùng auto-colorkey (None)
+            self.loadFrames(frame_list[i], name, 1, None)
 
         self.frames = self.init_frames
 

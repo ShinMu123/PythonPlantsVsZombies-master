@@ -14,6 +14,34 @@ class UserManager:
         self.current_user = None
         self.load_users()
         self.load_scores()
+        # Tự tạo và đăng nhập tài khoản 'guest' nếu chưa có ai đăng nhập,
+        # để game luôn lưu điểm mặc định.
+        self.ensure_guest_account()
+
+    def ensure_guest_account(self):
+        """Tạo tài khoản khách và auto-login nếu chưa đăng nhập."""
+        guest = 'guest'
+        if guest not in getattr(self, 'users', {}):
+            # Mật khẩu rỗng cho guest
+            self.users[guest] = {
+                'password': self.hash_password(''),
+                'email': '',
+                'created_at': datetime.now().isoformat(),
+                'last_login': None
+            }
+            self.save_users()
+        if guest not in getattr(self, 'scores', {}):
+            self.scores[guest] = {
+                'high_score': 0,
+                'total_games': 0,
+                'wins': 0,
+                'losses': 0,
+                'best_level': 1
+            }
+            self.save_scores()
+        # Nếu chưa đăng nhập user nào, mặc định dùng guest
+        if not self.is_logged_in():
+            self.current_user = guest
 
     def load_users(self):
         """Tải danh sách người dùng từ file"""
